@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>generative baselines comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { background: #fff !important; color: #111 !important; }
+  body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         font-size: 15px; line-height: 1.6; }
+  .results-section { padding: 48px 24px 80px; max-width: 1280px; margin: 0 auto; }
+  .results-section h2.section-title {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 36px; font-weight: 700; color: #111;
+    text-align: center; margin: 0 0 36px; letter-spacing: -0.01em;
+  }
+  .subsection-title { font-family: "Source Serif 4", Georgia, serif;
+    font-size: 24px; font-weight: 700; color: #111;
+    margin: 40px 0 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+  .dataset-title { font-size: 18px; font-weight: 600; color: #111; margin: 24px 0 6px; }
+  .task-meta { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
+
+  table.metric-table { border-collapse: collapse; margin: 6px 0 16px; font-size: 13px;
+                       background: #fff; border: 1px solid #e5e7eb; }
+  table.metric-table th, table.metric-table td {
+    padding: 6px 14px; border-bottom: 1px solid #e5e7eb; text-align: left; color: #111;
+  }
+  table.metric-table th { background: #f7f7f8; font-weight: 600;
+    font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #4b5563; }
+  table.metric-table td.method { font-weight: 600; }
+  table.metric-table tr.ours td { background: #fff7d6; }
+  table.metric-table td.num { font-variant-numeric: tabular-nums; font-family: "SF Mono", Menlo, monospace; }
+  .na { color: #cbd5e1; }
+
+  .carousel { position: relative; background: #fafafa; border: 1px solid #e5e7eb;
+              border-radius: 8px; padding: 18px 18px 12px; margin: 8px 0 12px; }
+  .carousel-inner { overflow: hidden; }
+  .carousel-track { display: flex; transition: transform 0.35s ease; }
+  .carousel-slide { flex: 0 0 100%; min-width: 0; }
+  .method-grid { display: grid; gap: 10px;
+                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .method-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+  .method-card .label { font-size: 12px; font-weight: 600; color: #111;
+                        padding: 6px 10px; background: #f7f7f8; border-bottom: 1px solid #e5e7eb;
+                        letter-spacing: 0.02em; }
+  .method-card video, .method-card img { display: block; width: 100%; height: auto;
+                                         background: #f3f4f6; }
+
+  .carousel-controls { display: flex; align-items: center; justify-content: center;
+                       gap: 14px; margin-top: 12px; }
+  .carousel-arrow { background: #fff; border: 1px solid #e5e7eb; border-radius: 999px;
+                    width: 34px; height: 34px; cursor: pointer; color: #111;
+                    display: flex; align-items: center; justify-content: center; }
+  .carousel-arrow:hover { background: #f3f4f6; }
+  .carousel-arrow:disabled { opacity: 0.3; cursor: default; }
+  .carousel-dots { display: flex; gap: 6px; }
+  .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db;
+                  border: 0; padding: 0; cursor: pointer; }
+  .carousel-dot.active { background: #111; }
+  .carousel-counter { font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
+</style>
+</head>
+<body>
+
+<section class="results-section">
+  <h2 class="section-title">Results</h2>
+  <h3 class="subsection-title">SceneNet (synthetic, indoor)</h3>
+  <h4 class="dataset-title">Depth</h4>
+  <div class="task-meta">&delta;1 &uarr; / &delta;2 &uarr; / &delta;3 &uarr;</div><table class="metric-table"><tr><th>Method</th><th>&delta;1 / &delta;2 / &delta;3</th></tr><tr><td class="method">Ours</td><td class="num">0.596 / 0.834 / 0.923</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.407 / 0.686 / 0.833</td></tr><tr><td class="method">ChronoDepth</td><td class="num">0.610 / 0.839 / 0.945</td></tr><tr class="ours"><td class="method">GEO4D</td><td class="num">0.749 / 0.904 / 0.958</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="scenenet_depth" data-task="depth"></div>
+  <h3 class="subsection-title">Virtual KITTI 2 (synthetic, outdoor)</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">17.33 / 0.317 / 0.587</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">17.54 / 0.322 / 0.582</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">SEVA</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="vkitti2" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.07 / 17.52</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.59 / 25.11</td></tr><tr><td class="method">GEO4D</td><td class="num">0.05 / 4.53</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 7.57</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="vkitti2" data-task="pose"></div>
+  <h4 class="dataset-title">Depth</h4>
+  <div class="task-meta">&delta;1 &uarr; / &delta;2 &uarr; / &delta;3 &uarr;</div><table class="metric-table"><tr><th>Method</th><th>&delta;1 / &delta;2 / &delta;3</th></tr><tr><td class="method">Ours</td><td class="num">0.409 / 0.499 / 0.548</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.473 / 0.519 / 0.545</td></tr><tr><td class="method">ChronoDepth</td><td class="num">0.466 / 0.531 / 0.562</td></tr><tr class="ours"><td class="method">GEO4D</td><td class="num">0.535 / 0.552 / 0.566</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="vkitti2" data-task="depth"></div>
+  <h3 class="subsection-title">Aria (synthetic-grade indoor)</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">19.32 / 0.359 / 0.645</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">21.11 / 0.301 / 0.683</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num">18.53 / 0.450 / 0.623</td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num">17.59 / 0.553 / 0.640</td></tr><tr><td class="method">SEVA</td><td class="num">15.40 / 0.637 / 0.515</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="aria" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.31 / 40.39</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.30 / 45.99</td></tr><tr><td class="method">GEO4D</td><td class="num">3.02 / 3.13</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 2.06</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="aria" data-task="pose"></div>
+  <h4 class="dataset-title">Depth</h4>
+  <div class="task-meta">&delta;1 &uarr; / &delta;2 &uarr; / &delta;3 &uarr;</div><table class="metric-table"><tr><th>Method</th><th>&delta;1 / &delta;2 / &delta;3</th></tr><tr class="ours"><td class="method">Ours</td><td class="num">0.819 / 0.837 / 0.857</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.093 / 0.227 / 0.396</td></tr><tr><td class="method">ChronoDepth</td><td class="num">0.366 / 0.482 / 0.574</td></tr><tr><td class="method">GEO4D</td><td class="num">0.312 / 0.563 / 0.774</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="aria" data-task="depth"></div>
+  <h3 class="subsection-title">DL3DV</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">13.12 / 0.401 / 0.349</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">13.39 / 0.405 / 0.359</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num">11.91 / 0.507 / 0.302</td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">SEVA</td><td class="num">13.07 / 0.481 / 0.354</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="dl3dv" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.09 / 27.88</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.08 / 36.06</td></tr><tr><td class="method">GEO4D</td><td class="num">0.00 / 2.31</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 4.14</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="dl3dv" data-task="pose"></div>
+  <h4 class="dataset-title">Depth</h4>
+  <div class="task-meta">&delta;1 &uarr; / &delta;2 &uarr; / &delta;3 &uarr;</div><table class="metric-table"><tr><th>Method</th><th>&delta;1 / &delta;2 / &delta;3</th></tr><tr><td class="method">Ours</td><td class="num">0.660 / 0.875 / 0.950</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.757 / 0.945 / 0.980</td></tr><tr><td class="method">ChronoDepth</td><td class="num">0.656 / 0.859 / 0.942</td></tr><tr class="ours"><td class="method">GEO4D</td><td class="num">0.761 / 0.936 / 0.978</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="dl3dv" data-task="depth"></div>
+  <h3 class="subsection-title">DL3DV (test split)</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">13.53 / 0.361 / 0.288</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">13.80 / 0.361 / 0.298</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num">12.17 / 0.493 / 0.232</td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">SEVA</td><td class="num">12.94 / 0.466 / 0.279</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="dl3dv_test" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.08 / 32.88</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.96 / 48.10</td></tr><tr><td class="method">GEO4D</td><td class="num">0.00 / 1.20</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 3.94</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="dl3dv_test" data-task="pose"></div>
+  <h3 class="subsection-title">Tanks & Temples</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">10.07 / 0.600 / 0.179</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">10.80 / 0.605 / 0.199</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num">9.08 / 0.634 / 0.155</td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr class="ours"><td class="method">SEVA</td><td class="num">11.86 / 0.543 / 0.265</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="5" data-dataset="tanksandtemples" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.00 / 9.10</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.02 / 17.37</td></tr><tr><td class="method">GEO4D</td><td class="num">0.00 / 1.40</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 1.36</td></tr></table>
+  <div class="carousel" data-samples="5" data-dataset="tanksandtemples" data-task="pose"></div>
+  <h3 class="subsection-title">RealEstate10K</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">17.17 / 0.224 / 0.536</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">17.59 / 0.223 / 0.535</td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num">16.06 / 0.323 / 0.478</td></tr><tr class="ours"><td class="method">DFoT (only 8 frames)</td><td class="num">20.72 / 0.224 / 0.660</td></tr><tr><td class="method">SEVA</td><td class="num">17.60 / 0.291 / 0.544</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="re10k" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.63 / 50.47</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">1.68 / 56.46</td></tr><tr><td class="method">GEO4D</td><td class="num">0.04 / 3.16</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 5.19</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="re10k" data-task="pose"></div>
+  <h3 class="subsection-title">Scannet++</h3>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.02 / 16.30</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.02 / 22.97</td></tr><tr><td class="method">GEO4D</td><td class="num">0.01 / 1.49</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 0.94</td></tr></table>
+  <div class="carousel" data-samples="7" data-dataset="scannetpp" data-task="pose"></div>
+  <h4 class="dataset-title">Depth</h4>
+  <div class="task-meta">&delta;1 &uarr; / &delta;2 &uarr; / &delta;3 &uarr;</div><table class="metric-table"><tr><th>Method</th><th>&delta;1 / &delta;2 / &delta;3</th></tr><tr><td class="method">Ours</td><td class="num">0.686 / 0.873 / 0.946</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.807 / 0.962 / 0.993</td></tr><tr><td class="method">ChronoDepth</td><td class="num">0.812 / 0.971 / 0.996</td></tr><tr class="ours"><td class="method">GEO4D</td><td class="num">0.930 / 0.993 / 1.000</td></tr></table>
+  <div class="carousel" data-samples="7" data-dataset="scannetpp" data-task="depth"></div>
+  <h3 class="subsection-title">SpatialVid</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num">12.70 / 0.467 / 0.290</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">13.44 / 0.461 / 0.330</td></tr><tr class="ours"><td class="method">Wan 2.1 FLF</td><td class="num">13.83 / 0.458 / 0.315</td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">SEVA</td><td class="num">13.01 / 0.526 / 0.328</td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="spatialvid_nvs" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr><td class="method">Ours</td><td class="num">0.02 / 18.48</td></tr><tr class="ours"><td class="method">Ours (NVS-only)</td><td class="num">0.02 / 22.30</td></tr><tr><td class="method">GEO4D</td><td class="num">0.59 / 0.93</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 1.58</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="spatialvid_nvs" data-task="pose"></div>
+  <h3 class="subsection-title">AgiBotWorld (static head-camera)</h3>
+  <h4 class="dataset-title">Novel-view synthesis</h4>
+  <div class="task-meta">PSNR &uarr; / LPIPS &darr; / SSIM &uarr;</div><table class="metric-table"><tr><th>Method</th><th>PSNR / LPIPS / SSIM</th></tr><tr><td class="method">Ours</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">Wan 2.1 FLF</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">DFoT (only 8 frames)</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">SEVA</td><td class="num"><span class="na">&mdash;</span></td></tr><tr><td class="method">GEN3C</td><td class="num"><span class="na">&mdash;</span></td></tr></table>
+  <div class="carousel" data-samples="7" data-dataset="agibot_world" data-task="nvs"></div>
+  <h4 class="dataset-title">Camera pose</h4>
+  <div class="task-meta">AUC@3&deg; &uarr; / AUC@30&deg; &uarr;</div><table class="metric-table"><tr><th>Method</th><th>AUC@3&deg; / AUC@30&deg;</th></tr><tr class="ours"><td class="method">Ours</td><td class="num">0.00 / 0.00</td></tr><tr><td class="method">Ours (NVS-only)</td><td class="num">0.00 / 0.00</td></tr><tr><td class="method">GEO4D</td><td class="num">0.00 / 0.00</td></tr><tr><td class="method">RayDiffusion</td><td class="num">0.00 / 0.00</td></tr></table>
+  <div class="carousel" data-samples="10" data-dataset="agibot_world" data-task="pose"></div>
+</section>
+
+<script>
+const RECIPES = {
+  "scenenet_depth::depth": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/scenenet_depth/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["GT depth", "video", `eval_outputs/scenenet_depth/ours_depth_eval/sample_${i}/gt_depth.mp4`],
+    ["Ours", "video", `eval_outputs/scenenet_depth/ours_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/scenenet_depth/ours_nvs_only_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["ChronoDepth", "video", `eval_outputs/scenenet_depth/chronodepth_depth/sample_${i}/pred_depth_aligned.mp4`],
+    ["GEO4D", "video", `eval_outputs/scenenet_depth/geo4d_depth/sample_${i}/pred_depth.mp4`],
+  ],
+  "vkitti2::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/vkitti2/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/vkitti2/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/vkitti2/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+  ],
+  "vkitti2::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/vkitti2/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/vkitti2/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/vkitti2/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/vkitti2/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/vkitti2/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "vkitti2::depth": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/vkitti2/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["GT depth", "video", `eval_outputs/vkitti2/ours_depth_eval/sample_${i}/gt_depth.mp4`],
+    ["Ours", "video", `eval_outputs/vkitti2/ours_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/vkitti2/ours_nvs_only_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["ChronoDepth", "video", `eval_outputs/vkitti2/chronodepth_depth/sample_${i}/pred_depth_aligned.mp4`],
+    ["GEO4D", "video", `eval_outputs/vkitti2/geo4d_depth/sample_${i}/pred_depth.mp4`],
+  ],
+  "aria::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/aria/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/aria/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/aria/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/aria/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["DFoT (only 8 frames)", "video", `eval_outputs/aria/dfot_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/aria/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "aria::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/aria/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/aria/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/aria/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/aria/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/aria/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "aria::depth": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/aria/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["GT depth", "video", `eval_outputs/aria/ours_depth_eval/sample_${i}/gt_depth.mp4`],
+    ["Ours", "video", `eval_outputs/aria/ours_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/aria/ours_nvs_only_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["ChronoDepth", "video", `eval_outputs/aria/chronodepth_depth/sample_${i}/pred_depth_aligned.mp4`],
+    ["GEO4D", "video", `eval_outputs/aria/geo4d_depth/sample_${i}/pred_depth.mp4`],
+  ],
+  "dl3dv::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/dl3dv/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/dl3dv/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/dl3dv/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/dl3dv/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/dl3dv/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "dl3dv::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/dl3dv/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/dl3dv/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/dl3dv/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/dl3dv/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/dl3dv/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "dl3dv::depth": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/dl3dv/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["GT depth", "video", `eval_outputs/dl3dv/ours_depth_eval/sample_${i}/gt_depth.mp4`],
+    ["Ours", "video", `eval_outputs/dl3dv/ours_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/dl3dv/ours_nvs_only_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["ChronoDepth", "video", `eval_outputs/dl3dv/chronodepth_depth/sample_${i}/pred_depth_aligned.mp4`],
+    ["GEO4D", "video", `eval_outputs/dl3dv/geo4d_depth/sample_${i}/pred_depth.mp4`],
+  ],
+  "dl3dv_test::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/dl3dv_test/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/dl3dv_test/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/dl3dv_test/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/dl3dv_test/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/dl3dv_test/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "dl3dv_test::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/dl3dv_test/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/dl3dv_test/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/dl3dv_test/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/dl3dv_test/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/dl3dv_test/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "tanksandtemples::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/tanksandtemples/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/tanksandtemples/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/tanksandtemples/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/tanksandtemples/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/tanksandtemples/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "tanksandtemples::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/tanksandtemples/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/tanksandtemples/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/tanksandtemples/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/tanksandtemples/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/tanksandtemples/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "re10k::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/re10k/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/re10k/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/re10k/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/re10k/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["DFoT (only 8 frames)", "video", `eval_outputs/re10k/dfot_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/re10k/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "re10k::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/re10k/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/re10k/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/re10k/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/re10k/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/re10k/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "scannetpp::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/scannetpp/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/scannetpp/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/scannetpp/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/scannetpp/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/scannetpp/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "scannetpp::depth": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/scannetpp/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["GT depth", "video", `eval_outputs/scannetpp/ours_depth_eval/sample_${i}/gt_depth.mp4`],
+    ["Ours", "video", `eval_outputs/scannetpp/ours_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/scannetpp/ours_nvs_only_depth_eval/sample_${i}/pred_depth.mp4`],
+    ["ChronoDepth", "video", `eval_outputs/scannetpp/chronodepth_depth/sample_${i}/pred_depth_aligned.mp4`],
+    ["GEO4D", "video", `eval_outputs/scannetpp/geo4d_depth/sample_${i}/pred_depth.mp4`],
+  ],
+  "spatialvid_nvs::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/spatialvid_nvs/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/spatialvid_nvs/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/spatialvid_nvs/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/spatialvid_nvs/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/spatialvid_nvs/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "spatialvid_nvs::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/spatialvid_nvs/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/spatialvid_nvs/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/spatialvid_nvs/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/spatialvid_nvs/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/spatialvid_nvs/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+  "agibot_world::nvs": (i) => [
+    ["Ground truth", "video", `eval_outputs/agibot_world/ours_nvs/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "video", `eval_outputs/agibot_world/ours_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Ours (NVS-only)", "video", `eval_outputs/agibot_world/ours_nvs_only_nvs/sample_${i}/pred_rgb.mp4`],
+    ["Wan 2.1 FLF", "video", `eval_outputs/agibot_world/wan_flf_nvs/sample_${i}/pred_rgb.mp4`],
+    ["SEVA", "video", `eval_outputs/agibot_world/seva_nvs/sample_${i}/samples-rgb.mp4`],
+  ],
+  "agibot_world::pose": (i) => [
+    ["Ground truth (RGB)", "video", `eval_outputs/agibot_world/ours_pose_depth/sample_${i}/gt_rgb.mp4`],
+    ["Ours", "img", `eval_outputs/agibot_world/ours_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["Ours (NVS-only)", "img", `eval_outputs/agibot_world/ours_nvs_only_pose_depth/sample_${i}/camera_trajectory.png`],
+    ["GEO4D", "img", `eval_outputs/agibot_world/geo4d_pose/sample_${i}/camera_trajectory.png`],
+    ["RayDiffusion", "img", `eval_outputs/agibot_world/raydiffusion_pose/sample_${i}/camera_trajectory.png`],
+  ],
+};
+
+const SLOW_DATASETS = new Set(["dl3dv", "dl3dv_test", "tanksandtemples"]);
+const SLOW_RATE = 0.5;
+
+function pad5(n) { return String(n).padStart(5, "0"); }
+
+function makeMediaCard(label, kind, src, slow) {
+  const card = document.createElement("div");
+  card.className = "method-card";
+  const lab = document.createElement("div");
+  lab.className = "label"; lab.textContent = label;
+  card.appendChild(lab);
+  let media;
+  if (kind === "video") {
+    media = document.createElement("video");
+    media.muted = true; media.loop = true; media.playsInline = true;
+    media.autoplay = true; media.preload = "metadata";
+    media.src = src;
+    if (slow) {
+      media.addEventListener("loadedmetadata", () => { media.playbackRate = SLOW_RATE; });
+    }
+  } else {
+    media = document.createElement("img");
+    media.loading = "lazy"; media.src = src;
+  }
+  card.appendChild(media);
+  return card;
+}
+
+function buildCarousel(el) {
+  const dataset = el.dataset.dataset;
+  const task = el.dataset.task;
+  const total = parseInt(el.dataset.samples, 10);
+  const recipe = RECIPES[`${dataset}::${task}`];
+  if (!recipe || !total) return;
+  const slow = SLOW_DATASETS.has(dataset);
+
+  const inner = document.createElement("div"); inner.className = "carousel-inner";
+  const track = document.createElement("div"); track.className = "carousel-track";
+  inner.appendChild(track);
+
+  for (let i = 0; i < total; i++) {
+    const slide = document.createElement("div"); slide.className = "carousel-slide";
+    const grid = document.createElement("div"); grid.className = "method-grid";
+    for (const [label, kind, path] of recipe(pad5(i))) {
+      grid.appendChild(makeMediaCard(label, kind, path, slow));
+    }
+    slide.appendChild(grid);
+    track.appendChild(slide);
+  }
+
+  const controls = document.createElement("div"); controls.className = "carousel-controls";
+  const prev = document.createElement("button");
+  prev.className = "carousel-arrow"; prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+  const next = document.createElement("button");
+  next.className = "carousel-arrow"; next.innerHTML = '<i class="fas fa-chevron-right"></i>';
+  const counter = document.createElement("div"); counter.className = "carousel-counter";
+  const dots = document.createElement("div"); dots.className = "carousel-dots";
+  controls.append(prev, dots, counter, next);
+
+  el.append(inner, controls);
+
+  let idx = 0;
+  const dotEls = [];
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("button"); d.className = "carousel-dot";
+    d.addEventListener("click", () => go(i));
+    dots.appendChild(d); dotEls.push(d);
+  }
+
+  function go(i) {
+    idx = Math.max(0, Math.min(total - 1, i));
+    track.style.transform = `translateX(-${idx * 100}%)`;
+    dotEls.forEach((d, k) => d.classList.toggle("active", k === idx));
+    counter.textContent = `${idx + 1} / ${total}`;
+    prev.disabled = idx === 0;
+    next.disabled = idx === total - 1;
+  }
+  prev.addEventListener("click", () => go(idx - 1));
+  next.addEventListener("click", () => go(idx + 1));
+  go(0);
+}
+
+function initAll() {
+  document.querySelectorAll(".carousel:not([data-built])").forEach(el => {
+    el.setAttribute("data-built", "1");
+    buildCarousel(el);
+  });
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
+}
+new MutationObserver(initAll).observe(document.documentElement, { childList: true, subtree: true });
+</script>
+
+</body>
+</html>

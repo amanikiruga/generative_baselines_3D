@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>1.3B mixture model — generative baselines BFS pass</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --fg: #15171a;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #1f3a93;
+  --accent-soft: #eef1fb;
+  --good: #0a7c2c;
+  --bg: #fbfbfc;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg); background: var(--bg); margin: 0;
+  font-size: 15px; line-height: 1.55;
+}
+header {
+  border-bottom: 1px solid var(--line);
+  padding: 56px 32px 36px;
+  background: white;
+}
+header .container { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
+h1 small { color: var(--accent); font-weight: 600; font-size: 0.65em; letter-spacing: 0.05em; text-transform: uppercase; display: block; margin-bottom: 10px; }
+.subtitle { color: var(--muted); font-size: 16px; margin: 8px 0 18px; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.meta div { font-size: 13px; padding: 10px 12px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 2px; }
+.meta strong { display: block; color: var(--accent); font-weight: 600; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+main { max-width: 1100px; margin: 0 auto; padding: 40px 32px 80px; }
+section { margin-bottom: 64px; }
+section > h2 { font-size: 22px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+section > .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+.metric-table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+  background: white; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.metric-table th, .metric-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+.metric-table th { background: #f7f8fa; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #4b5563; }
+.metric-table td { font-variant-numeric: tabular-nums; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+.metric-table td.method { font-family: inherit; font-weight: 600; color: var(--fg); }
+.metric-table tr:last-child td { border-bottom: 0; }
+.metric-table tr.ours td { background: #fcfcf2; }
+.na { color: #cbd5e1; }
+h3 { font-size: 17px; font-weight: 600; margin: 28px 0 8px; }
+.dataset-block { margin-top: 28px; padding-top: 18px; border-top: 1px dashed var(--line); }
+.dataset-block:first-of-type { border-top: 0; }
+.gallery { display: grid; gap: 12px; margin-top: 14px; }
+.vid-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.img-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.vid-card, .img-card { background: black; border-radius: 6px; overflow: hidden; position: relative; aspect-ratio: 4/3; }
+.img-card { aspect-ratio: auto; background: #f3f4f6; padding: 0; }
+.vid-card video, .img-card img { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.img-card img { background: #f3f4f6; height: auto; }
+.vid-label { position: absolute; left: 0; top: 0; padding: 4px 10px; font-size: 11px; font-weight: 600; color: white; background: rgba(0,0,0,0.55); letter-spacing: 0.04em; text-transform: uppercase; z-index: 2; }
+.num-badge { position: absolute; right: 0; bottom: 0; padding: 4px 10px; font-size: 10.5px; font-weight: 600; color: white; background: rgba(31,58,147,0.78); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; z-index: 2; }
+.img-card .vid-label { background: rgba(31,58,147,0.85); }
+.notes { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 18px 22px; font-size: 13.5px; }
+.notes h3 { margin-top: 0; }
+.notes ul { margin: 6px 0; padding-left: 22px; }
+.notes li { margin: 4px 0; }
+code { background: #f3f4f6; padding: 1px 6px; border-radius: 3px; font-size: 0.92em; }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 0 40px; border-top: 1px solid var(--line); }
+.legend { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-block; margin-right: 14px; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #ececec; --muted: #9aa3ad; --line: #262932; --bg: #0d0e10; --accent: #7aa2ff; --accent-soft: #16203a; }
+  header, .metric-table, .notes { background: #14161a; }
+  .metric-table th { background: #1a1d22; color: #9aa3ad; }
+  .metric-table tr.ours td { background: #1c1e15; }
+  code { background: #1a1d22; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1><small>NeurIPS submission · BFS evaluation pass</small>1.3B mixture model vs generative baselines</h1>
+    <div class="subtitle">Pose, depth, and novel-view synthesis comparison on RE10K, DL3DV, and Scannet++ — 10 scenes per dataset.</div>
+    <div class="meta">
+      <div><strong>Checkpoint</strong>outputs/2026-04-27/22-44-50/checkpoints/epoch=0-step=2850.ckpt</div>
+      <div><strong>Algorithm</strong>WanTextToVideoRayDepthMoT · mode ray_depth_prediction_firstlast</div>
+      <div><strong>Sample budget</strong>10 sequences/dataset · 50 frames each</div>
+      <div><strong>Hardware</strong>2× H200 · mamba env <code>test2</code></div>
+    </div>
+    <div class="legend">↑ higher is better &nbsp;·&nbsp; ↓ lower is better &nbsp;·&nbsp; <em>Ours</em> rows shaded.</div>
+  </div>
+</header>
+
+<main>
+
+<section>
+  <h2>Headline numbers</h2>
+  <div class="section-sub">Aggregated across all evaluated samples per dataset.</div>
+
+  <h3>NVS — interior-frame metrics (PSNR ↑ / LPIPS ↓ / SSIM ↑)</h3>
+  <table class="metric-table"><thead><tr><th>Method</th><th>RE10K</th><th>DL3DV</th></tr></thead><tbody><tr class="ours"><td class="method">Ours</td><td>16.35 / 0.256 / 0.488</td><td>12.51 / 0.429 / 0.318</td></tr><tr><td class="method">Wan 2.1 FLF</td><td><span class="na">—</span></td><td><span class="na">—</span></td></tr><tr><td class="method">GEN3C</td><td><span class="na">—</span></td><td><span class="na">—</span></td></tr><tr><td class="method">DFoT</td><td>16.70 / 0.414 / 0.512</td><td>11.78 / 0.641 / 0.297</td></tr><tr><td class="method">SEVA</td><td>17.60 / 0.291 / 0.544</td><td>13.07 / 0.481 / 0.354</td></tr></tbody></table>
+
+  <h3>Camera pose — relative-pose AUC (AUC@3° ↑ / AUC@30° ↑)</h3>
+  <table class="metric-table"><thead><tr><th>Method</th><th>RE10K</th><th>DL3DV</th><th>SCANNETPP</th></tr></thead><tbody><tr class="ours"><td class="method">Ours</td><td>1.07 / 50.74</td><td>0.13 / 33.36</td><td>0.04 / 21.07</td></tr><tr><td class="method">GEO4D</td><td>0.02 / 3.12</td><td>0.01 / 2.29</td><td>0.00 / 1.46</td></tr><tr><td class="method">RayDiffusion</td><td>0.00 / 5.20</td><td>0.00 / 4.08</td><td>0.00 / 0.95</td></tr></tbody></table>
+
+  <h3>Depth — δ-thresholds, aligned scale + shift (δ1 ↑ / δ2 ↑ / δ3 ↑)</h3>
+  <table class="metric-table"><thead><tr><th>Method</th><th>SCANNETPP</th><th>DL3DV</th></tr></thead><tbody><tr class="ours"><td class="method">Ours</td><td>0.813 / 0.898 / 0.910</td><td>0.915 / 0.986 / 0.995</td></tr><tr><td class="method">GEO4D</td><td>0.818 / 0.910 / 0.924</td><td>0.930 / 0.984 / 0.991</td></tr><tr><td class="method">ChronoDepth</td><td>0.832 / 0.936 / 0.936</td><td>0.900 / 0.983 / 0.996</td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Side-by-side — Ours vs every baseline (per dataset × task)</h2>
+  <div class="section-sub">First test sample per panel. Each card carries the method's aggregate metric over the full 10-sample BFS pass for that (dataset, task).</div>
+  <div class="dataset-block"><h3>RE10K · Novel-view synthesis</h3><div class="gallery vid-grid"><div class="vid-card"><div class="vid-label">Ground truth</div><video src="eval_outputs/re10k/ours_nvs/sample_00000/gt_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Ours</div><div class="num-badge">PSNR 16.35 · LPIPS 0.256 · SSIM 0.488</div><video src="eval_outputs/re10k/ours_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Wan 2.1 FLF</div><video src="eval_outputs/re10k/wan_flf_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">DFoT</div><div class="num-badge">PSNR 16.70 · LPIPS 0.414 · SSIM 0.512</div><video src="eval_outputs/re10k/dfot_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">SEVA</div><div class="num-badge">PSNR 17.60 · LPIPS 0.291 · SSIM 0.544</div><video src="eval_outputs/re10k/seva_nvs/sample_00000/samples-rgb.mp4" muted loop autoplay playsinline></video></div></div></div>
+<div class="dataset-block"><h3>RE10K · Camera pose</h3><div class="gallery img-grid"><div class="img-card"><div class="vid-label">Ours</div><div class="num-badge">AUC@3° 1.07 · AUC@30° 50.74</div><img src="eval_outputs/re10k/ours_pose_depth/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">GEO4D</div><div class="num-badge">AUC@3° 0.02 · AUC@30° 3.12</div><img src="eval_outputs/re10k/geo4d_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">RayDiffusion</div><div class="num-badge">AUC@3° 0.00 · AUC@30° 5.20</div><img src="eval_outputs/re10k/raydiffusion_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div></div></div>
+<div class="dataset-block"><h3>DL3DV · Novel-view synthesis</h3><div class="gallery vid-grid"><div class="vid-card"><div class="vid-label">Ground truth</div><video src="eval_outputs/dl3dv/ours_nvs/sample_00000/gt_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Ours</div><div class="num-badge">PSNR 12.51 · LPIPS 0.429 · SSIM 0.318</div><video src="eval_outputs/dl3dv/ours_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Wan 2.1 FLF</div><video src="eval_outputs/dl3dv/wan_flf_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">DFoT</div><div class="num-badge">PSNR 11.78 · LPIPS 0.641 · SSIM 0.297</div><video src="eval_outputs/dl3dv/dfot_nvs/sample_00000/pred_rgb.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">SEVA</div><div class="num-badge">PSNR 13.07 · LPIPS 0.481 · SSIM 0.354</div><video src="eval_outputs/dl3dv/seva_nvs/sample_00000/samples-rgb.mp4" muted loop autoplay playsinline></video></div></div></div>
+<div class="dataset-block"><h3>DL3DV · Camera pose</h3><div class="gallery img-grid"><div class="img-card"><div class="vid-label">Ours</div><div class="num-badge">AUC@3° 0.13 · AUC@30° 33.36</div><img src="eval_outputs/dl3dv/ours_pose_depth/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">GEO4D</div><div class="num-badge">AUC@3° 0.01 · AUC@30° 2.29</div><img src="eval_outputs/dl3dv/geo4d_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">RayDiffusion</div><div class="num-badge">AUC@3° 0.00 · AUC@30° 4.08</div><img src="eval_outputs/dl3dv/raydiffusion_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div></div></div>
+<div class="dataset-block"><h3>DL3DV · Depth</h3><div class="gallery vid-grid"><div class="vid-card"><div class="vid-label">GT depth</div><video src="eval_outputs/dl3dv/ours_pose_depth/sample_00000/gt_depth.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Ours</div><div class="num-badge">δ1 0.915 · δ2 0.986 · δ3 0.995</div><video src="eval_outputs/dl3dv/ours_pose_depth/sample_00000/pred_depth.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">ChronoDepth (aligned)</div><div class="num-badge">δ1 0.900 · δ2 0.983 · δ3 0.996</div><video src="eval_outputs/dl3dv/chronodepth_depth/sample_00000/pred_depth_aligned.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">GEO4D (aligned)</div><div class="num-badge">δ1 0.930 · δ2 0.984 · δ3 0.991</div><video src="eval_outputs/dl3dv/geo4d_depth/sample_00000/pred_depth.mp4" muted loop autoplay playsinline></video></div></div></div>
+<div class="dataset-block"><h3>SCANNETPP · Camera pose</h3><div class="gallery img-grid"><div class="img-card"><div class="vid-label">Ours</div><div class="num-badge">AUC@3° 0.04 · AUC@30° 21.07</div><img src="eval_outputs/scannetpp/ours_pose_depth/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">GEO4D</div><div class="num-badge">AUC@3° 0.00 · AUC@30° 1.46</div><img src="eval_outputs/scannetpp/geo4d_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div><div class="img-card"><div class="vid-label">RayDiffusion</div><div class="num-badge">AUC@3° 0.00 · AUC@30° 0.95</div><img src="eval_outputs/scannetpp/raydiffusion_pose/sample_00000/camera_trajectory.png" loading="lazy" /></div></div></div>
+<div class="dataset-block"><h3>SCANNETPP · Depth</h3><div class="gallery vid-grid"><div class="vid-card"><div class="vid-label">GT depth</div><video src="eval_outputs/scannetpp/ours_pose_depth/sample_00000/gt_depth.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">Ours</div><div class="num-badge">δ1 0.813 · δ2 0.898 · δ3 0.910</div><video src="eval_outputs/scannetpp/ours_pose_depth/sample_00000/pred_depth.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">ChronoDepth (aligned)</div><div class="num-badge">δ1 0.832 · δ2 0.936 · δ3 0.936</div><video src="eval_outputs/scannetpp/chronodepth_depth/sample_00000/pred_depth_aligned.mp4" muted loop autoplay playsinline></video></div><div class="vid-card"><div class="vid-label">GEO4D (aligned)</div><div class="num-badge">δ1 0.818 · δ2 0.910 · δ3 0.924</div><video src="eval_outputs/scannetpp/geo4d_depth/sample_00000/pred_depth.mp4" muted loop autoplay playsinline></video></div></div></div>
+</section>
+
+<section>
+  <h2>Notes &amp; caveats</h2>
+  <div class="notes">
+    <ul>
+      <li><strong>Checkpoint</strong>: latest stable mixture epoch (step 2850). The newer <code>last.ckpt</code> was being actively rewritten by the in-flight training run when this BFS pass started, so we pinned the prior fully-written epoch checkpoint to avoid mid-load truncation.</li>
+      <li><strong>RE10K depth</strong>: dataset has no GT depth — depth metrics for our method on RE10K are intentionally not reported (we inject zero-depth at inference so the FLF VAE chunking works; pose &amp; NVS predictions remain valid).</li>
+      <li><strong>GEN3C</strong>: env-blocked in <code>test2</code> (transformer_engine API mismatch — <code>apply_rotary_pos_emb</code> no longer exported). Add to results once env is rebuilt.</li>
+      <li><strong>Pending datasets (T&amp;T, Sintel, KITTI, ETH3D, DTU)</strong>: data not on disk in the form needed for pose/depth eval. Sintel-depth zip and KITTI-Eigen need to be downloaded; T&amp;T needs camera intrinsics; ETH3D dir is empty. Loaders will be written once data lands.</li>
+      <li><strong>Sample budget</strong>: 10 scenes per (dataset, task) — BFS pass; not statistically tight. RE10K test_percentage caps at 656 candidates, DL3DV at 63, Scannet++ at 7. We intersect with <code>--max_samples 10</code>.</li>
+      <li><strong>Reproducing</strong>: full commands in <code>README_here.md</code>. Output base <code>eval_outputs/</code> is a symlink to <code>/n/netscratch/ydu_lab/Everyone/akiruga/generative_baselines_eval/</code> (the holyoke ydu_lab volume hit 100% mid-run).</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>generated by <code>build_index.py</code> · numbers populated from <code>collect_results.py</code></footer>
+
+</body>
+</html>

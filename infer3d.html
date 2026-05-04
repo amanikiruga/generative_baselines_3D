@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Infer3D: 3D Reconstruction through Inverse Generative Modelling. We present an analysis-by-synthesis framework that augments feedforward 3D reconstruction with test-time optimization for robust OOD generalization.">
+  <meta name="keywords" content="3D Reconstruction, Analysis-by-Synthesis, Out-of-Distribution, Gaussian Splatting, Monocular, NeRF, Inverse Generative Modelling">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infer3D: 3D Reconstruction through Inverse Generative Modelling</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Bulma CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+  <!-- Academicons (arXiv icon) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="./static/css/style.css">
+</head>
+<body>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<section class="hero-section has-text-centered">
+  <div class="container is-max-desktop">
+    <h1 class="publication-title">
+      Infer3D: 3D Reconstruction through Inverse Generative Modelling
+    </h1>
+
+    <div class="publication-authors">
+      <span class="author-block">
+        <a href="https://amanikiruga.github.io">Amani Kiruga</a><sup>1</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://mhamilton.net/">Mark Hamilton</a><sup>2</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://web.mit.edu/cocosci/josh.html">Joshua B. Tenenbaum</a><sup>2</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://billf.mit.edu/">William T. Freeman</a><sup>2</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://www.vincentsitzmann.com/">Vincent Sitzmann</a><sup>2</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://yilundu.github.io/">Yilun Du</a><sup>1</sup>,
+      </span>
+      <span class="author-block">
+        <a href="https://ayushtewari.com/">Ayush Tewari</a><sup>3</sup>
+      </span>
+    </div>
+    <div class="publication-authors">
+      <span class="author-block"><sup>1</sup>Harvard University,</span>
+      <span class="author-block"><sup>2</sup>MIT,</span>
+      <span class="author-block"><sup>3</sup>University of Cambridge</span>
+    </div>
+    <div class="publication-venue">
+      <span>arXiv preprint</span>
+    </div>
+
+    <div class="publication-links">
+      <a href="#" class="button">
+        <span class="icon"><i class="fas fa-file-pdf"></i></span>
+        <span>Paper</span>
+      </a>
+      <a href="#" class="button">
+        <span class="icon"><i class="ai ai-arxiv"></i></span>
+        <span>arXiv</span>
+      </a>
+      <a href="#" class="button">
+        <span class="icon"><i class="fab fa-github"></i></span>
+        <span>Code</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TEASER VIDEO
+     ============================================================ -->
+<section class="teaser-section">
+  <div class="container is-max-widescreen">
+    <video autoplay muted loop playsinline>
+      <source src="./infer_3d_teaser.mp4" type="video/mp4">
+    </video>
+    <p class="teaser-caption">
+      A visualization of our analysis-by-synthesis pipeline. By inverting a generative model to infer geometry and pose, our method recovers high-quality, view-consistent 3D reconstructions.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================
+     ABSTRACT
+     ============================================================ -->
+<section class="abstract-section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3 has-text-centered">Abstract</h2>
+        <div class="content">
+          <p>
+            We present a method for monocular 3D reconstruction that achieves strong generalization to unseen cameras, a key failure mode for existing feedforward reconstruction networks. State-of-the-art models yield excellent performance on in-distribution images, but result in significant degradation under shifts in camera parameters (e.g., viewpoint) not encountered in training.
+          </p>
+          <p>
+            We begin by analyzing this limitation and show that feedforward architectures implicitly overfit to the training camera manifold. To address this, we introduce an analysis-by-synthesis framework that augments feedforward inference with an explicit optimization-based inference. Rather than feeding monocular inputs directly into the network, our method optimizes the latent 3D representation to match the input image while remaining close to the network's learned 3D prior.
+          </p>
+          <p>
+            We demonstrate strong OOD reconstruction accuracy on both controlled synthetic benchmarks and real datasets, while maintaining competitive performance in-distribution. Further, our method uses adaptive test-time computation, spending more compute on difficult OOD examples, and less on in-distribution inputs.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     METHOD
+     ============================================================ -->
+<section class="method-section">
+  <div class="container is-max-widescreen">
+    <h2 class="title is-3 has-text-centered">Method</h2>
+    <div class="columns is-centered">
+      <div class="column is-11">
+        <figure>
+          <img class="method-figure" src="./main_method.png" alt="Analysis-by-synthesis inference paradigm">
+        </figure>
+        <p class="method-caption">
+          <strong>Analysis-by-synthesis inference paradigm.</strong>
+          To handle OOD inputs, we employ a test-time optimization loop.
+          We freeze the <em>Image Generator</em> and <em>2D-to-3D Lifter</em> to preserve the learned prior,
+          and optimize the <em>Latent Code</em> and <em>Rendering Parameters</em> to minimize the reconstruction loss
+          between the rendered reconstruction and the OOD input.
+          This ensures the input to the lifter remains a valid predicted in-distribution image
+          while matching the OOD observation.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     RESULTS
+     ============================================================ -->
+<section class="results-section">
+  <div class="container is-max-widescreen">
+    <h2 class="title is-3 has-text-centered section-title">Results</h2>
+
+    <!-- ── Scene Results ────────────────────────────────────── -->
+    <h3 class="title is-4 subsection-title">Scene Reconstruction (Large FoV / Fisheye)</h3>
+
+    <!-- RE10K -->
+    <h4 class="title is-5 dataset-title">RealEstate10K</h4>
+    <div class="comparison-carousel" data-carousel="re10k" data-interval="2500">
+      <div class="carousel-inner"></div>
+      <div class="carousel-controls">
+        <button class="carousel-arrow carousel-prev" aria-label="Previous">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="carousel-dots"></div>
+        <button class="carousel-arrow carousel-next" aria-label="Next">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Object Results ───────────────────────────────────── -->
+    <h3 class="title is-4 subsection-title" style="margin-top: 3rem;">Object Reconstruction (Viewpoint Shift)</h3>
+
+    <!-- CO3D Hydrants -->
+    <h4 class="title is-5 dataset-title">CO3D Hydrants</h4>
+    <div class="comparison-carousel" data-carousel="hydrants" data-interval="2500">
+      <div class="carousel-inner"></div>
+      <div class="carousel-controls">
+        <button class="carousel-arrow carousel-prev" aria-label="Previous">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="carousel-dots"></div>
+        <button class="carousel-arrow carousel-next" aria-label="Next">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- CO3D Vases -->
+    <h4 class="title is-5 dataset-title">CO3D Vases</h4>
+    <div class="comparison-carousel" data-carousel="vases" data-interval="2500">
+      <div class="carousel-inner"></div>
+      <div class="carousel-controls">
+        <button class="carousel-arrow carousel-prev" aria-label="Previous">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="carousel-dots"></div>
+        <button class="carousel-arrow carousel-next" aria-label="Next">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ShapeNet -->
+    <h4 class="title is-5 dataset-title">ShapeNet (11 Categories)</h4>
+    <div class="comparison-carousel" data-carousel="shapenet" data-interval="2500">
+      <div class="carousel-inner"></div>
+      <div class="carousel-controls">
+        <button class="carousel-arrow carousel-prev" aria-label="Previous">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="carousel-dots"></div>
+        <button class="carousel-arrow carousel-next" aria-label="Next">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     BIBTEX
+     ============================================================ -->
+<section class="bibtex-section" id="bibtex">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">BibTeX</h2>
+    <pre><code>@article{infer3d2026robust,
+  title     = {Robust Monocular 3D Reconstruction from Unseen Cameras
+               via Analysis-by-Synthesis},
+  author    = {Amani Kiruga and Mark Hamilton and Joshua B. Tenenbaum and William T. Freeman and Vincent Sitzmann and Yilun Du and Ayush Tewari},
+  journal   = {arXiv preprint arXiv:XXXX.XXXXX},
+  year      = {2026},
+}</code></pre>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8 has-text-centered">
+        <p>
+          This website is licensed under
+          <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Custom JS -->
+<script src="./static/js/main.js"></script>
+
+</body>
+</html>

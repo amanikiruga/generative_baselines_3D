@@ -1,0 +1,38 @@
+# Nested upstream .git dirs (renamed to .git_upstream to disable; ignore both)
+**/.git_upstream/
+ChronoDepth/.git/
+diffusion-forcing-transformer/.git/
+GEN3C/.git/
+RayDiffusion/.git/
+
+# Heavy checkpoints / weights / demo assets
+RayDiffusion/models/
+RayDiffusion/models.zip
+RayDiffusion/__MACOSX/
+diffusion-forcing-transformer/pretrained/
+GEN3C/assets/
+
+# Eval artifacts (mix of real dirs and symlinks → match both)
+eval_outputs
+eval_outputs/
+eval_outputs_v2
+eval_outputs_v2/
+eval_outputs_v3
+eval_outputs_v3/
+eval_logs
+eval_logs/
+eval_logs_v2
+eval_logs_v2/
+eval_logs_v3
+eval_logs_v3/
+
+# Python / misc
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.gradio/
+
+# Empty/legacy
+raydiffusion/
