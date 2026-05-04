@@ -73,6 +73,7 @@ def main() -> None:
                 pred_depth_THW=pred_metric,
                 gt_depth_THW=gt_metric,
                 dataset=args.dataset,
+                normalize_unit_per_video=True,
             )
         except Exception as e:
             print(f"Error on {sample_dir.name}: {e}")

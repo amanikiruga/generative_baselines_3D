@@ -276,12 +276,16 @@ def main():
                                mode="bilinear", align_corners=False)
             pred_01 = pt.squeeze(1).numpy()
 
-        # Per-video global LAD2 fit handles the [0,1]→metric unit conversion.
+        # ChronoDepth pred_01 is *relative depth* in [0,1] (closer = darker,
+        # farther = brighter — empirically Pearson +0.83 with gt metric depth).
+        # No inversion needed: LAD2 fits s*pred + t = gt across both depth-space
+        # signals.
         try:
             metrics = eval_depth_sequence(
                 pred_depth_THW=pred_01,
                 gt_depth_THW=gt_metric,
                 dataset=args.dataset,
+                normalize_unit_per_video=True,
             )
         except Exception as e:
             print(f"Error evaluating {sample_dir.name}: {e}")

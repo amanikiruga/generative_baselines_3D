@@ -463,6 +463,7 @@ def main() -> None:
                 pred_depth_THW=pred_depth,
                 gt_depth_THW=gt_depth,
                 dataset=args.dataset,
+                normalize_unit_per_video=True,
             )
         except Exception as e:
             print(f"Error evaluating {sample_dir.name}: {e}")

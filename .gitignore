@@ -19,12 +19,19 @@ eval_outputs_v2
 eval_outputs_v2/
 eval_outputs_v3
 eval_outputs_v3/
+eval_outputs_v3_n50
+eval_outputs_v3_n50/
 eval_logs
 eval_logs/
 eval_logs_v2
 eval_logs_v2/
 eval_logs_v3
 eval_logs_v3/
+eval_logs_v3_n50
+eval_logs_v3_n50/
+
+# Claude Code workspace
+.claude/
 
 # Python / misc
 __pycache__/

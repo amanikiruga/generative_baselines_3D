@@ -43,12 +43,17 @@ html = re.sub(r"<script\b[^>]*>[\s\S]*?</script>", grab_script, html)
 
 # eval_abs    = repr(str((ROOT / "eval_outputs").resolve()))
 # eval_v2_abs = repr(str((ROOT / "eval_outputs_v2").resolve()))
-eval_v3_abs = repr(str((ROOT / "eval_outputs_v3").resolve()))
+eval_v3_abs     = repr(str((ROOT / "eval_outputs_v3").resolve()))
+eval_v3_n50_abs = repr(str((ROOT / "eval_outputs_v3_n50").resolve()))
 asset_resolver = f"""
 <script>
 window.__ASSET_RESOLVE__ = (rel) => {{
   if (!rel || /^(https?:|data:|\\/)/.test(rel)) return rel;
-  const map = {{ "eval_outputs_v3": {eval_v3_abs}}};
+  // Order matters: longer prefix first so eval_outputs_v3_n50 matches before eval_outputs_v3.
+  const map = {{
+    "eval_outputs_v3_n50": {eval_v3_n50_abs},
+    "eval_outputs_v3":     {eval_v3_abs}
+  }};
   for (const k of Object.keys(map)) {{
     if (rel.startsWith(k + "/")) return "/gradio_api/file=" + map[k] + rel.slice(k.length);
   }}

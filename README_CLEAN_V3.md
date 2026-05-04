@@ -90,9 +90,20 @@ generative_baselines/
 │   ├── eval_pose_sequence(pred_c2w, gt_c2w, seq, save_dir)
 │   │     builds TUM PoseTrajectory3D from c2w stacks
 │   │     calls vo_eval.eval_metrics → (ATE, RPE_trans, RPE_rot)
-│   ├── eval_depth_sequence(pred_depth_THW, gt_depth_THW, mask=None, …)
+│   ├── eval_depth_sequence(pred_depth_THW, gt_depth_THW,
+│   │                       pred_in_disparity=False, gt_in_disparity=False, …)
+│   │     If a method natively predicts disparity (1/depth) it sets the flag and
+│   │     the input is inverted before LAD2 so all alignment is in *depth space*.
 │   │     calls depth_eval.depth_evaluation(align_with_lad2=True, use_gpu=True)
 │   │     → dict with Abs Rel / Sq Rel / RMSE / Log RMSE / δ<1.25 / δ<1.25² / δ<1.25³
+│   ├── load_depth_metric_from_npz(path)
+│   │     turns `*_depth_raw.npz` ([-1,1] norm-disparity + scale) into metric meters
+│   └── aggregate(per_seq, keys)  arithmetic mean (Geo4D-style averaging over seqs)
+│
+├── colorize_depth_v3.py          ← post-eval visualisation step:
+│     turns `pred_depth_geo4d.npz` / `pred_depth_raw.npz` into `pred_depth.mp4`
+│     (turbo colormap). Run BEFORE `build_index_v3.py` so the depth carousel slides
+│     have media to display. Idempotent.
 │   └── aggregate(results)        arithmetic mean over sequences (matches Geo4D)
 │
 ├── geo4d/
@@ -202,12 +213,29 @@ Order (serial within one dataset):
 ## §6 Aggregation
 
 ```bash
+mamba run -n test2 python colorize_depth_v3.py    # *required before build_index*
 mamba run -n test2 python collect_results_v3.py   # writes RESULTS_V3.md
 mamba run -n test2 python build_index_v3.py       # writes index_v3.html
 ```
 
-Both scan `eval_outputs_v3/` for `pose_metrics.json` (`ate`, `rpe_trans`, `rpe_rot`),
-`depth_metrics.json` (Geo4D keys), and the NVS `per_sample_metrics.csv`.
+`colorize_depth_v3.py` is part of the flow: V3 baseline depth evaluators
+(`geo4d/eval_geo4d_depth_v3.py`, `ChronoDepth/eval_chronodepth_depth_aria_v3.py`)
+dump only `*_depth_raw.npz` + metric JSON; the colorizer turbo-colormaps each
+into `pred_depth.mp4` next to the npz so `index_v3.html` can render the depth
+carousel slides. Idempotent — safe to call repeatedly. Scans both
+`eval_outputs_v3/` and `eval_outputs_v3_n50/`.
+
+`build_index_v3.py` highlights the best-row per task using **direction-aware**
+primaries (`build_index_v3.py:PRIMARY_SPEC`):
+- nvs   — PSNR ↑ (max)
+- pose  — ATE ↓ (min)        ← V3 metric is loss-style, lower is better
+- depth — δ<1.25 ↑ (max)     ← canonical depth headline
+
+The same logic applies to `build_index_v3_n50.py`.
+
+All three aggregators (`collect_results_v3.py`, `build_index_v3.py`,
+`build_index_v3_n50.py`) and `colorize_depth_v3.py` are invoked automatically
+at the end of `run_all_v3.sh` / `run_all_v3_n50.sh`.
 
 ---
 
@@ -236,15 +264,20 @@ index_v3.html                         # browsable per-scene comparison
 ## §8 Implementation order
 
 1. `geo4d_eval/vo_eval.py`, `geo4d_eval/depth_eval.py` (verbatim copies).
-2. `eval_common_v3.py` (the two thin wrappers + aggregate).
+2. `eval_common_v3.py` (the two thin wrappers + aggregate + load_depth helper).
 3. `eval_ours_pose_v3.py`, `eval_ours_depth_v3.py` (new wrappers for our predictions).
 4. `geo4d/eval_geo4d_pose_v3.py`, `geo4d/eval_geo4d_depth_v3.py` (`cp` + swap metric block).
 5. `RayDiffusion/eval_raydiffusion_pose_v3.py` (`cp` + swap metric block).
 6. `ChronoDepth/eval_chronodepth_depth_aria_v3.py` (`cp` + swap metric block).
 7. `run_dataset_v3.sh` (`cp` from v2, swap eval calls + OUT path).
 8. `run_all_v3.sh` (`cp` from v2, point at v3 runner).
-9. `collect_results_v3.py`, `build_index_v3.py` (`cp` + new metric keys).
-10. Smoke-test on `re10k` GPU 0; if numbers look sane, fire `run_all_v3.sh`.
+9. `collect_results_v3.py`, `build_index_v3.py` (`cp` + new metric keys + direction-aware highlight).
+10. `colorize_depth_v3.py` (turns baseline depth npz → mp4 for the index).
+11. Smoke-test on `re10k` GPU 0; if numbers look sane, fire `run_all_v3.sh`.
+
+For an n=50 follow-up sweep, mirror these into `*_v3_n50` variants — see the
+`run_all_v3_n50.sh` / `run_dataset_v3_n50.sh` / `collect_results_v3_n50.py`
+/ `build_index_v3_n50.py` already in the repo.
 
 ---
 

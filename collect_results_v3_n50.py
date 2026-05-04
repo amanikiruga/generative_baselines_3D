@@ -3,7 +3,7 @@
 import json, csv, os
 from pathlib import Path
 
-ROOT = Path("/net/holy-isilon/ifs/rc_labs/ydu_lab/Lab/akiruga/generative_baselines/eval_outputs_v3")
+ROOT = Path("/net/holy-isilon/ifs/rc_labs/ydu_lab/Lab/akiruga/generative_baselines/eval_outputs_v3_n50")
 
 # V3 metrics:
 #   nvs   — unchanged: PSNR / LPIPS / SSIM from per_sample_metrics.csv
@@ -108,7 +108,7 @@ def main():
     }
 
     lines = []
-    lines.append("# Results V3 — Geo4D-style metrics, OURS_FINAL = 2026-05-03/20-03-01/last.ckpt")
+    lines.append("# Results V3 (n=50) — Geo4D-style metrics, OURS_FINAL = 2026-05-03/20-03-01/last.ckpt")
     lines.append("")
     lines.append("Pose: ATE (m) / RPE_trans (m) / RPE_rot (deg) — Sim(3)-Umeyama via evo (Geo4D verbatim).")
     lines.append("Depth: Abs Rel / RMSE / δ<1.25 — per-video LAD2 alignment (Geo4D verbatim).")
@@ -150,6 +150,8 @@ def main():
             row.append(collect_depth(ev) or "")
         lines.append("| " + " | ".join(row) + " |")
     lines.append("")
+    # Disparity-space LAD2 — same predictions, fit in 1/depth space. Numbers are
+    # NOT directly comparable to the depth-space table above (different units).
     lines.append("## Depth (disparity space) — disparity-space LAD2 (Abs Rel ↓ / RMSE ↓ / δ<1.25 ↑)")
     lines.append("")
     lines.append("_Different units from the depth table above — do not compare cells across the two tables._")
@@ -166,7 +168,7 @@ def main():
     lines.append("")
     lines.append("Empty cell = not yet run / not applicable / data unavailable. T&T, KITTI, Sintel, ETH3D, DTU pending dataset loaders.")
 
-    out_path = ROOT.parent / "RESULTS_V3.md"
+    out_path = ROOT.parent / "RESULTS_V3_N50.md"
     out_path.write_text("\n".join(lines) + "\n")
     print(f"wrote {out_path}")
 

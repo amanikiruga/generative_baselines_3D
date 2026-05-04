@@ -18,29 +18,8 @@ import json, csv, os, re
 from pathlib import Path
 
 ROOT = Path("/net/holy-isilon/ifs/rc_labs/ydu_lab/Lab/akiruga/generative_baselines")
-# V3 reads from whichever output tree has more samples *per (dataset, task)* —
-# prefer the n=50 tree if its OURS run is at least as advanced as n=10's,
-# otherwise fall back. Resolved by `pick_eval(dataset, task)`.
-EVAL_N10 = ROOT / "eval_outputs_v3"
-EVAL_N50 = ROOT / "eval_outputs_v3_n50"
-
-def _count_in(root: Path, dataset: str, task: str) -> int:
-    primary = {"nvs": "ours_nvs", "pose": "ours_pose_depth", "depth": "ours_pose_depth", "depth_disp": "ours_pose_depth"}[task]
-    base = root / dataset / primary
-    if not base.exists(): return 0
-    return sum(1 for p in base.iterdir() if p.is_dir() and p.name.startswith("sample_"))
-
-def pick_eval(dataset: str, task: str) -> tuple[Path, str]:
-    """Return (abs_root, rel_root) for the bigger of n10/n50 for this slot."""
-    n10 = _count_in(EVAL_N10, dataset, task)
-    n50 = _count_in(EVAL_N50, dataset, task)
-    if n50 >= n10 and n50 > 0:
-        return EVAL_N50, "eval_outputs_v3_n50"
-    return EVAL_N10, "eval_outputs_v3"
-
-# Default fallback; overridden per-dataset/per-task at use sites below.
-EVAL = EVAL_N50 if EVAL_N50.exists() else EVAL_N10
-EVAL_REL = "eval_outputs_v3_n50" if EVAL_N50.exists() else "eval_outputs_v3"
+EVAL = ROOT / "eval_outputs_v3_n50"
+EVAL_REL = "eval_outputs_v3_n50"
 PROMPT_DATASETS = {"re10k", "dl3dv", "agibot_world"}
 
 
@@ -128,10 +107,6 @@ DEPTH_METHODS = [
     ("ChronoDepth",          "chronodepth_depth", "chronodepth_depth",        "pred_depth.mp4",        "video"),
     ("GEO4D",                "geo4d_depth",       "geo4d_depth",              "pred_depth.mp4",        "video"),
 ]
-# Disparity-space track lives in its own task ("depth_disp") with its own table —
-# metrics aren't directly comparable to depth-space numbers (different units).
-# Same media as the depth task, but the per-method tuples point at *_depth_disp/
-# eval dirs for metrics.
 DEPTH_DISP_METHODS = [
     ("Ground truth (RGB)",   "ours_pose_depth",   None,                       "gt_rgb.mp4",            "video"),
     ("GT depth",             "ours_pose_depth",   None,                       "gt_depth.mp4",          "video"),
@@ -223,12 +198,11 @@ def get_prompt(dataset, sample_idx):
     """Read prompt.txt from the inference output (re10k/dl3dv/agibot only)."""
     if dataset not in PROMPT_DATASETS:
         return None
-    abs_root, _ = pick_eval(dataset, "pose")
     primary = "ours_pose_depth"
-    p = abs_root / dataset / primary / f"sample_{sample_idx:05d}" / "prompt.txt"
+    p = EVAL / dataset / primary / f"sample_{sample_idx:05d}" / "prompt.txt"
     if not p.exists():
-        nvs_root, _ = pick_eval(dataset, "nvs")
-        p = nvs_root / dataset / "ours_nvs" / f"sample_{sample_idx:05d}" / "prompt.txt"
+        # Fall back to the nvs branch if pose_depth doesn't exist.
+        p = EVAL / dataset / "ours_nvs" / f"sample_{sample_idx:05d}" / "prompt.txt"
     if not p.exists():
         return None
     try:
@@ -239,11 +213,9 @@ def get_prompt(dataset, sample_idx):
 
 # ---------------- discovery ----------------
 def count_samples(dataset, task):
-    """Number of sample_* dirs under the primary method dir for this (dataset, task),
-    sourced from whichever of n10/n50 has more (per-task, per-dataset)."""
-    abs_root, _ = pick_eval(dataset, task)
+    """Number of sample_* dirs under the primary method dir for this (dataset, task)."""
     primary = {"nvs": "ours_nvs", "pose": "ours_pose_depth", "depth": "ours_pose_depth", "depth_disp": "ours_pose_depth"}[task]
-    base = abs_root / dataset / primary
+    base = EVAL / dataset / primary
     if not base.exists(): return 0
     return sum(1 for p in base.iterdir() if p.is_dir() and p.name.startswith("sample_"))
 
@@ -253,37 +225,36 @@ def js_recipe_for(dataset, task):
     methods = TASK_METHODS[task]
     per_scene_getter = {"nvs": per_scene_nvs, "pose": per_scene_pose, "depth": per_scene_depth, "depth_disp": per_scene_depth}[task]
     n = count_samples(dataset, task)
-    abs_root, rel_root = pick_eval(dataset, task)
     entries = []
     for label, mdir, edir, fname, kind in methods:
         # Depth fallback: if the eval-aligned dir is missing (no GT depth in this dataset,
         # e.g. agibot_world), fall back to the raw inference output which always has pred/gt mp4s.
-        if task == "depth" and mdir == "ours_depth_eval" and not (abs_root / dataset / mdir).exists():
+        if task == "depth" and mdir == "ours_depth_eval" and not (EVAL / dataset / mdir).exists():
             mdir = "ours_pose_depth"
         # Skip methods whose root dir doesn't exist for this dataset.
-        if not (abs_root / dataset / mdir).exists():
+        if not (EVAL / dataset / mdir).exists():
             continue
         if kind == "auto":
             chosen = None
             for cand in fname:
-                if (abs_root / dataset / mdir / "sample_00000" / cand).exists():
+                if (EVAL / dataset / mdir / "sample_00000" / cand).exists():
                     chosen = cand
                     break
             if chosen is None:
                 continue
             actual_kind = "video" if chosen.endswith(".mp4") else "img"
-            path_tpl = f"{rel_root}/{dataset}/{mdir}/sample_${{i}}/{chosen}"
+            path_tpl = f"{EVAL_REL}/{dataset}/{mdir}/sample_${{i}}/{chosen}"
             chosen_kind = actual_kind
         else:
-            path_tpl = f"{rel_root}/{dataset}/{mdir}/sample_${{i}}/{fname}"
+            path_tpl = f"{EVAL_REL}/{dataset}/{mdir}/sample_${{i}}/{fname}"
             chosen_kind = kind
 
         # Pre-compute per-scene metric strings for this method (None if no eval dir).
         scene_metrics = []
         for si in range(n):
             v = None
-            if edir and (abs_root / dataset / edir).exists():
-                v = per_scene_getter(abs_root / dataset / edir, si)
+            if edir and (EVAL / dataset / edir).exists():
+                v = per_scene_getter(EVAL / dataset / edir, si)
             scene_metrics.append(v)
         sm_json = json.dumps(scene_metrics)
         entries.append(
@@ -297,7 +268,6 @@ def js_recipe_for(dataset, task):
 def build_metric_table(dataset, task):
     sub_units, col_header, getter, fmts = TASK_HEADERS[task]
     methods = TASK_METHODS[task]
-    # Primary-metric index per task (higher is always better for these).
     # V3 primary highlight metric per task — index into the metric tuple
     # returned by the task's getter, plus minimize/maximize direction.
     #   nvs:   (PSNR, LPIPS, SSIM)        → PSNR ↑       (max)
@@ -307,16 +277,14 @@ def build_metric_table(dataset, task):
                     "depth": (2, "max"), "depth_disp": (2, "max")}
     primary_idx, primary_dir = PRIMARY_SPEC[task]
 
-    # Collect (label, metric tuple) for ranking. Use the per-(dataset, task)
-    # bigger-source root so the n=50 metrics get picked when available.
-    abs_root, _ = pick_eval(dataset, task)
+    # Collect (label, metric tuple) for ranking.
     table_rows = []
     for label, _mdir, edir, _fname, _kind in methods:
         if label in ("Ground truth", "GT depth"):
             continue
         if edir is None:
             continue
-        m = getter(abs_root / dataset / edir) if (abs_root / dataset / edir).exists() else None
+        m = getter(EVAL / dataset / edir) if (EVAL / dataset / edir).exists() else None
         table_rows.append((label, m))
 
     # Find the row with the best primary-metric value (direction-aware).
@@ -354,7 +322,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>generative baselines comparison — V3</title>
+<title>generative baselines comparison — V3 (n=50)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -591,7 +559,7 @@ def main():
             .replace("__RECIPES__", "\n".join(recipes))
             .replace("__PROMPTS__", json.dumps(prompts_obj)))
 
-    out = ROOT / "index_v3.html"
+    out = ROOT / "index_v3_n50.html"
     out.write_text(html)
     print(f"wrote {out}")
 

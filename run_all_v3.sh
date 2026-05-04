@@ -48,6 +48,8 @@ echo "[run_all_v3] wave 3 starting at $(date)"
 wait
 echo "[run_all_v3] wave 3 DONE at $(date)"
 
+mamba run -n test2 python eval_depth_disp_offline_v3.py --root eval_outputs_v3
+mamba run -n test2 python colorize_depth_v3.py
 mamba run -n test2 python collect_results_v3.py
 mamba run -n test2 python build_index_v3.py
 echo "[run_all_v3] ALL DONE at $(date)"

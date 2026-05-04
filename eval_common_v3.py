@@ -109,14 +109,22 @@ def eval_depth_sequence(
     dataset:        str | None = None,
     custom_mask:    np.ndarray | torch.Tensor | None = None,
     use_gpu:        bool = True,
+    pred_in_disparity: bool = False,
+    gt_in_disparity:   bool = False,
+    eval_in_disparity: bool = False,
+    normalize_unit_per_video: bool = False,
 ) -> dict:
     """
     Per-video global LAD2 scale-shift alignment, Geo4D-style.
 
-    Inputs are (T, H, W) depth tensors in metric-or-disparity space (whatever
-    the model produced / the GT specifies). `depth_evaluation` flattens across
-    all frames and fits a single (s, t) — i.e. one scale-shift per video, not
-    per frame.
+    All inputs are (T, H, W). For consistent affine fit we want both pred and
+    gt in *depth* space (positive, larger = farther) before LAD2. If a caller
+    natively produces disparity (1/depth or normalised inverse depth, e.g.
+    ChronoDepth's [0,1] output), pass `pred_in_disparity=True` and the input
+    will be inverted (1/(x+eps)) before alignment. Same for `gt_in_disparity`.
+
+    `depth_evaluation` then flattens across frames and fits one (s, t) over
+    the whole video — Geo4D's per-video LAD2.
     """
     pd = pred_depth_THW
     gd = gt_depth_THW
@@ -125,7 +133,75 @@ def eval_depth_sequence(
     pd = pd.float()
     gd = gd.float()
 
-    max_depth = DEPTH_MAX_BY_DATASET.get(dataset, None)
+    # Convert disparity-space inputs → depth space so LAD2 fits an affine
+    # mapping in a single, consistent space across all methods.
+    eps = 1e-6
+    if pred_in_disparity:
+        pd = 1.0 / torch.clamp(pd, min=eps)
+    if gt_in_disparity:
+        gd = 1.0 / torch.clamp(gd, min=eps)
+
+    # Optional: AFTER both inputs are in depth space, flip both to disparity
+    # so LAD2 fits and metrics are computed in *disparity space*. This is a
+    # parallel evaluation track to the depth-space one — same per-video LAD2,
+    # but the affine mapping s*p + t = g lives in 1/m units.
+    if eval_in_disparity:
+        pd = 1.0 / torch.clamp(pd, min=eps)
+        gd = 1.0 / torch.clamp(gd, min=eps)
+
+    # Optional: per-video min-max → [0, 1] BEFORE LAD2.
+    # This stabilises depth-space alignment when raw depth has a huge dynamic
+    # range (e.g. 1/disparity blowups near-zero). Applied to pred and gt
+    # independently — LAD2 fits the affine offset/scale anyway, so this just
+    # conditions the inputs without changing the affine-equivalent solution
+    # (when valid pixels span the full input range; near-degenerate scenes
+    # still benefit from bounded numerics).
+    def _percentile_clip(x: torch.Tensor, q_lo: float = 2.0,
+                         q_hi: float = 98.0) -> torch.Tensor:
+        """Per-video percentile clip (no rescale). Bounds the input dynamic
+        range so a handful of far-pixel outliers (where 1/disp blows up) don't
+        dominate LAD2's affine fit; values in [p_lo, p_hi] pass through, the
+        rest get clamped to those endpoints."""
+        # numpy.percentile on a CPU array is faster + lighter than torch.quantile
+        # on a multi-million-element tensor (the latter materialises a sorted copy).
+        arr = x.detach().cpu().numpy() if x.is_cuda else x.detach().numpy()
+        finite = np.isfinite(arr) & (arr > 0)
+        if not finite.any():
+            return x
+        vals = arr[finite]
+        lo = float(np.percentile(vals, q_lo))
+        hi = float(np.percentile(vals, q_hi))
+        if hi <= lo:
+            return x
+        return torch.clamp(x, lo, hi)
+
+    if normalize_unit_per_video:
+        # Per-video minmax to a bounded **non-zero** window using GT's [p2, p98]
+        # as the shared reference range. Both pred and gt land in the same
+        # [floor, 1] depth interval so LAD2 fits cleanly; the floor (0.05)
+        # avoids zero-valued GT that would either get masked out or drive
+        # abs_rel = |p-g|/g toward infinity.
+        FLOOR = 0.05
+        gd_arr = gd.detach().cpu().numpy()
+        finite = np.isfinite(gd_arr) & (gd_arr > 0)
+        if finite.any():
+            v = gd_arr[finite]
+            lo = float(np.percentile(v, 2.0))
+            hi = float(np.percentile(v, 98.0))
+            if hi > lo:
+                def _norm(t: torch.Tensor) -> torch.Tensor:
+                    out = (t - lo) / (hi - lo)        # → ~[0, 1] over GT bulk
+                    out = torch.clamp(out, 0.0, 1.0)
+                    return out * (1.0 - FLOOR) + FLOOR  # → [FLOOR, 1]
+                pd = _norm(pd)
+                gd = _norm(gd)
+
+    # When both inputs are unit-normalised, the dataset's metric max_depth
+    # clip (e.g. 70 m for vKITTI2) no longer applies — values are in [0, 1].
+    if normalize_unit_per_video:
+        max_depth = None
+    else:
+        max_depth = DEPTH_MAX_BY_DATASET.get(dataset, None)
     # Geo4D uses lr=1e-2/iters=5000 when masking with `custom_mask` (their
     # outdoor branch); lr=1e-4/iters=1000 otherwise. Mirror that.
     lr        = 1e-2 if custom_mask is not None else 1e-4
@@ -180,6 +256,9 @@ def disparity_norm_to_metric_depth(
     depth_norm: np.ndarray,
     scale: float,
     eps: float = 1e-3,
+    percentile_clip: float | None = 2.0,
+    disp_minmax_floor: float = 0.05,
+    disp_minmax_ceil: float = 0.95,
 ) -> np.ndarray:
     """
     Convert the ``[-1, 1]`` normalised disparity stored by our inference
@@ -188,15 +267,32 @@ def disparity_norm_to_metric_depth(
 
     Pipeline (matches scripts/eval_rgb_to_ray_depth_depth.py:53-71):
         disp_01  = (depth_norm + 1) / 2
-        d_scaled = 1 / clip(disp_01, eps, 1 - eps) - 1
+        d_scaled = 1 / clip(disp_01, lo, 1 - eps) - 1
         d_metric = d_scaled * scale
 
-    Pixels at the far-clip end of the disparity range (disp_01 ≤ eps) become
-    the maximum representable scaled depth and are clamped — they remain
-    valid for Geo4D's max_depth-clip mask.
+    `percentile_clip` (default 2.0): clip disp_01's lower bound to its p-th
+    percentile across valid pixels of the video (with floor `eps`). This
+    stops the `1/disp` inversion from exploding when many pixels have
+    near-zero disparity (very far ground-truth points), which otherwise
+    blows up the depth dynamic range and makes downstream LAD2 alignment
+    numerically dominated by a few outlier far pixels. Set to None for the
+    legacy fixed-eps behaviour.
     """
     disp_01 = (np.asarray(depth_norm, dtype=np.float32) + 1.0) * 0.5
-    disp_01 = np.clip(disp_01, eps, 1.0 - eps)
+    # Percentile-floor on disp_01 keeps the subsequent 1/disp inversion bounded
+    # regardless of the raw disparity distribution (degenerate scenes where most
+    # pixels cluster near 0 no longer blow up to 1/eps depths). Relative order
+    # is preserved, so LAD2 downstream still has the right shape to fit.
+    if percentile_clip is not None:
+        valid = (disp_01 > 0) & np.isfinite(disp_01)
+        if valid.any():
+            lo_p = float(np.percentile(disp_01[valid], percentile_clip))
+            lo = max(lo_p, eps)
+        else:
+            lo = eps
+    else:
+        lo = eps
+    disp_01 = np.clip(disp_01, lo, 1.0 - eps)
     d_scaled = 1.0 / disp_01 - 1.0
     return (d_scaled * float(scale)).astype(np.float32)
 
