@@ -66,7 +66,7 @@ def _native_disparity(method: str, sample_dir: Path) -> np.ndarray | None:
     with eval_in_disparity=False (already disparity).
     """
     eps = 1e-3
-    if method == "ours":
+    if method in OURS_LIKE:
         p = sample_dir / "pred_depth_raw.npz"
         if not p.exists(): return None
         d_norm = np.load(p)["depth"].astype(np.float32)
@@ -114,9 +114,14 @@ def _eval_dataset(eval_root: Path, dataset: str, method: str, src_subdir: str,
                          if p.is_dir() and p.name.startswith("sample_"))
 
     for sd in tqdm(sample_dirs, desc=f"  {method:11s} {dataset}", leave=False):
-        # GT lives next to ours_pose_depth, regardless of method.
-        gt_path = eval_root / dataset / "ours_pose_depth" / sd.name / "gt_depth_raw.npz"
-        if not gt_path.exists():
+        # GT lives in any of the ours pose_depth dirs (V3 or V4 layout).
+        gt_path = None
+        for cand in ("ours_pose_depth", "ours_final_pose_depth", "ours_nvs_pose_depth"):
+            p = eval_root / dataset / cand / sd.name / "gt_depth_raw.npz"
+            if p.exists():
+                gt_path = p
+                break
+        if gt_path is None:
             continue
         try:
             pred_disp = _native_disparity(method, sd)
@@ -151,11 +156,18 @@ def _eval_dataset(eval_root: Path, dataset: str, method: str, src_subdir: str,
     return final["n_samples"]
 
 
+# V3 used "ours_pose_depth"; V4 splits into "ours_final_pose_depth" and
+# "ours_nvs_pose_depth". Both layouts are listed; the script auto-skips ones
+# whose source dir doesn't exist for a given (root, dataset).
 METHOD_DIR = {
-    "ours":        ("ours_pose_depth",     "ours_depth_disp_eval"),
-    "geo4d":       ("geo4d_depth",         "geo4d_depth_disp"),
-    "chronodepth": ("chronodepth_depth",   "chronodepth_depth_disp"),
+    "ours":          ("ours_pose_depth",          "ours_depth_disp_eval"),
+    "ours_final":    ("ours_final_pose_depth",    "ours_final_depth_disp_eval"),
+    "ours_nvs":      ("ours_nvs_pose_depth",      "ours_nvs_depth_disp_eval"),
+    "geo4d":         ("geo4d_depth",              "geo4d_depth_disp"),
+    "chronodepth":   ("chronodepth_depth",        "chronodepth_depth_disp"),
 }
+# Methods whose pred uses the same disparity decoding as the V3 "ours" branch.
+OURS_LIKE = {"ours", "ours_final", "ours_nvs"}
 
 
 def main():

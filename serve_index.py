@@ -5,7 +5,7 @@ from pathlib import Path
 import gradio as gr
 
 ROOT = Path(__file__).parent.resolve()
-HTML_PATH = ROOT / "index_v3.html"
+HTML_PATH = ROOT / "index_v4_n50_merged.html"
 ASSET_PREFIX_TOKEN = "@@ASSETBASE@@"  # placeholder we substitute at load time
 
 html = HTML_PATH.read_text()
@@ -43,16 +43,22 @@ html = re.sub(r"<script\b[^>]*>[\s\S]*?</script>", grab_script, html)
 
 # eval_abs    = repr(str((ROOT / "eval_outputs").resolve()))
 # eval_v2_abs = repr(str((ROOT / "eval_outputs_v2").resolve()))
-eval_v3_abs     = repr(str((ROOT / "eval_outputs_v3").resolve()))
-eval_v3_n50_abs = repr(str((ROOT / "eval_outputs_v3_n50").resolve()))
+eval_v4_merged_abs = repr(str((ROOT / "eval_outputs_v4_n50_merged").resolve()))
+eval_v4_n50_abs    = repr(str((ROOT / "eval_outputs_v4_n50").resolve()))
+eval_v4_array_abs  = repr(str((ROOT / "eval_outputs_v4_n50_array").resolve()))
+eval_v3_abs        = repr(str((ROOT / "eval_outputs_v3").resolve()))
+eval_v3_n50_abs    = repr(str((ROOT / "eval_outputs_v3_n50").resolve()))
 asset_resolver = f"""
 <script>
 window.__ASSET_RESOLVE__ = (rel) => {{
   if (!rel || /^(https?:|data:|\\/)/.test(rel)) return rel;
-  // Order matters: longer prefix first so eval_outputs_v3_n50 matches before eval_outputs_v3.
+  // Order matters: longer prefix first so eval_outputs_v4_n50_merged matches before eval_outputs_v4_n50.
   const map = {{
-    "eval_outputs_v3_n50": {eval_v3_n50_abs},
-    "eval_outputs_v3":     {eval_v3_abs}
+    "eval_outputs_v4_n50_merged": {eval_v4_merged_abs},
+    "eval_outputs_v4_n50_array":  {eval_v4_array_abs},
+    "eval_outputs_v4_n50":        {eval_v4_n50_abs},
+    "eval_outputs_v3_n50":        {eval_v3_n50_abs},
+    "eval_outputs_v3":            {eval_v3_abs}
   }};
   for (const k of Object.keys(map)) {{
     if (rel.startsWith(k + "/")) return "/gradio_api/file=" + map[k] + rel.slice(k.length);

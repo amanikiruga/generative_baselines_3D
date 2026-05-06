@@ -30,8 +30,25 @@ eval_logs_v3/
 eval_logs_v3_n50
 eval_logs_v3_n50/
 
+# Future eval variants — auto-ignore any new eval_outputs_* / eval_logs_*
+eval_outputs_*
+eval_logs_*
+
 # Claude Code workspace
 .claude/
+
+# Local env / editor
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+
+# Common generated artifacts
+*.log
+*.tmp
+*.swp
+nohup.out
 
 # Python / misc
 __pycache__/
@@ -43,3 +60,11 @@ __pycache__/
 
 # Empty/legacy
 raydiffusion/
+
+# V4 / Zeroshot Eval artifacts
+checkpoints
+wandb/
+metadata_v3_n50/
+metadata_zeroshot_v4/
+metadata_zeroshot_v4_prompts/
+ours_v4_infer/

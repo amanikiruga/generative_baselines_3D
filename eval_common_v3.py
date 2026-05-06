@@ -176,25 +176,31 @@ def eval_depth_sequence(
         return torch.clamp(x, lo, hi)
 
     if normalize_unit_per_video:
-        # Per-video minmax to a bounded **non-zero** window using GT's [p2, p98]
-        # as the shared reference range. Both pred and gt land in the same
-        # [floor, 1] depth interval so LAD2 fits cleanly; the floor (0.05)
-        # avoids zero-valued GT that would either get masked out or drive
-        # abs_rel = |p-g|/g toward infinity.
+        # Per-video min-max to a bounded [FLOOR, 1] window. Each tensor uses
+        # ITS OWN [p2, p98] for the affine — using GT's range for both (the
+        # previous behaviour) collapsed the prediction to the floor whenever
+        # pred and gt lived in different units (e.g. chronodepth's [0,1]
+        # relative depth vs vkitti2's [6, 200]m metric GT), making any two
+        # methods produce bit-identical metrics on that dataset. With
+        # per-tensor percentile clipping, predictions in any unit land in
+        # [FLOOR, 1] preserving their own dynamic range, while LAD2 still
+        # fits the affine alignment to GT.
         FLOOR = 0.05
-        gd_arr = gd.detach().cpu().numpy()
-        finite = np.isfinite(gd_arr) & (gd_arr > 0)
-        if finite.any():
-            v = gd_arr[finite]
+        def _per_tensor_norm(t: torch.Tensor) -> torch.Tensor:
+            arr = t.detach().cpu().numpy()
+            finite = np.isfinite(arr) & (arr > 0)
+            if not finite.any():
+                return t
+            v = arr[finite]
             lo = float(np.percentile(v, 2.0))
             hi = float(np.percentile(v, 98.0))
-            if hi > lo:
-                def _norm(t: torch.Tensor) -> torch.Tensor:
-                    out = (t - lo) / (hi - lo)        # → ~[0, 1] over GT bulk
-                    out = torch.clamp(out, 0.0, 1.0)
-                    return out * (1.0 - FLOOR) + FLOOR  # → [FLOOR, 1]
-                pd = _norm(pd)
-                gd = _norm(gd)
+            if hi <= lo:
+                return t
+            out = (t - lo) / (hi - lo)
+            out = torch.clamp(out, 0.0, 1.0)
+            return out * (1.0 - FLOOR) + FLOOR  # → [FLOOR, 1]
+        pd = _per_tensor_norm(pd)
+        gd = _per_tensor_norm(gd)
 
     # When both inputs are unit-normalised, the dataset's metric max_depth
     # clip (e.g. 70 m for vKITTI2) no longer applies — values are in [0, 1].

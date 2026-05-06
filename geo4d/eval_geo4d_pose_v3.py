@@ -223,8 +223,17 @@ def infer_geo4d_video(
 
 def read_tum_trajectory(traj_path: str) -> np.ndarray:
     """
-    Parse TUM format trajectory → c2w matrices (N, 4, 4).
-    TUM line: timestamp tx ty tz qx qy qz qw  (c2w: camera position in world coords)
+    Parse Geo4D's pred_traj.txt → c2w matrices (N, 4, 4).
+
+    NOTE: this is NOT standard TUM format. Geo4D's writer
+    (`Geo4D/dust3r/utils/vo_eval.py:save_trajectory_tum_format`, line ~465)
+    emits the quaternion in **wxyz** order (qw first), not xyzw:
+        f.write(f"{ts} {xyz} {orientations_quat_wxyz[i][[0,1,2,3]]}\n")
+    Reading as xyzw silently swizzles the quaternion and produces a wrong
+    rotation. ATE is mostly preserved (translation-only metric) but RPE_trans
+    and RPE_rot are wrong.
+
+    File schema per row: `timestamp tx ty tz qw qx qy qz`.
     """
     poses = []
     with open(traj_path) as f:
@@ -233,8 +242,8 @@ def read_tum_trajectory(traj_path: str) -> np.ndarray:
             if not line or line.startswith("#"):
                 continue
             parts = line.split()
-            _, tx, ty, tz, qx, qy, qz, qw = [float(v) for v in parts]
-            R = Rotation.from_quat([qx, qy, qz, qw]).as_matrix()
+            _, tx, ty, tz, qw, qx, qy, qz = [float(v) for v in parts]
+            R = Rotation.from_quat([qx, qy, qz, qw]).as_matrix()  # scipy uses xyzw
             c2w = np.eye(4)
             c2w[:3, :3] = R
             c2w[:3, 3] = [tx, ty, tz]
